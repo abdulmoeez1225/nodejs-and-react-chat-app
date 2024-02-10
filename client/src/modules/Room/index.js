@@ -5,31 +5,44 @@ import Input from '../../components/Input'
 import { io } from 'socket.io-client'
 import Avatar from 'react-avatar';
 import { socket } from '../../utils'
+import { useLocation, useParams } from 'react-router-dom'
 
 
-const Dashboard = () => {
+const Room = () => {
+    let { roomName } = useParams();
+    console.log(roomName)
+
 	const [user, setUser] = useState(JSON.parse(localStorage.getItem('user:detail')))
 	const [conversations, setConversations] = useState([])
 	const [messages, setMessages] = useState({})
 	const [message, setMessage] = useState('')
 	const [users, setUsers] = useState([])
 	const messageRef = useRef(null)
+    const location = useLocation()
 
 
-	
+    useEffect(()=>{
+        if(socket){
+            socket.emit("joinRoom",{roomName:roomName,userId:user.id},)
+            socket.emit("getAlljoinedRoomServer",user.id)
+        }
+      },[location.pathname])
 
 	useEffect(() => {
-		socket?.emit('addUser', user?.id);
-		socket?.on('getUsers', users => {
-			// setUsers(users)
-			console.log('activeUsers :>> ', users);
-		})
-		socket?.on('getMessage', data => {
-			setMessages(prev => ({
-				...prev,
-				messages: [...prev.messages, { user: data.user, message: data.message }]
-			}))
-		})
+        if(socket){
+
+            socket?.emit('addUser', user?.id);
+            socket?.on('getUsers', users => {
+                // setUsers(users)
+                console.log('activeUsers :>> ', users);
+            })
+            socket?.on('getMessage', data => {
+                setMessages(prev => ({
+                    ...prev,
+                    messages: [...prev.messages, { user: data.user, message: data.message }]
+                }))
+            })
+        }
 	}, [socket])
 
 	useEffect(() => {
@@ -227,4 +240,4 @@ const Dashboard = () => {
 	)
 }
 
-export default Dashboard
+export default Room

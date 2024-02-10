@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react';
 import './App.css';
 import Header from './components/header';
 import Dashboard from './modules/Dashboard';
 import Form from './modules/Form';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
+import { startSocket } from './utils';
+import Room from './modules/Room';
 
 
 const ProtectedRoute = ({ children, auth=false }) => {
@@ -19,7 +22,20 @@ const ProtectedRoute = ({ children, auth=false }) => {
   return children
 }
 
+
 function App() {
+
+  const location = useLocation()
+
+  const [token,setToken]=useState('')
+
+  useEffect(()=>{
+    startSocket("http://localhost:8080")
+  },[])
+
+  useEffect(()=>{
+    setToken(localStorage.getItem('user:token') !== null || false)
+  },[location.pathname])
   return (
     <>
     <ToastContainer
@@ -35,7 +51,8 @@ function App() {
     theme="light"
     transition="Bounce"
     />
-    <Header/>
+    {token && <Header/>}
+    
     <Routes>
       <Route path='/' element={
         <ProtectedRoute auth={true}>
@@ -50,6 +67,11 @@ function App() {
       <Route path='/users/sign_up' element={
         <ProtectedRoute>
         <Form isSignInPage={false}/>
+      </ProtectedRoute>
+      } />
+       <Route path='/room/:roomName' element={
+        <ProtectedRoute>
+        <Room/>
       </ProtectedRoute>
       } />
     </Routes>

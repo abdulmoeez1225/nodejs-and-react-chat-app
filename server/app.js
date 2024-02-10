@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const io = require('socket.io')(8080, {
     cors: {
-        origin: 'http://localhost:3002',
+        origin: ['http://localhost:3000','http://localhost:8080',"https://main-tick-healthy.ngrok-free.app"],
     }
 });
 
@@ -15,13 +15,23 @@ require('./db/connection');
 const Users = require('./models/Users');
 const PrivateConversation = require('./models/PrivateConversation');
 const PrivateMessage = require('./models/PrivateMessage');
+const ChatRoom = require('./models/ChatRoom');
 
 // app Use
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cors());
-
+const corsOpts = {
+    origin: ['*','localhost:3000','http://192.168.100.170:3000','https://main-tick-healthy.ngrok-free.app'],
+    methods: [
+        'GET',
+        'POST',
+    ],
+    allowedHeaders: [
+        'Content-Type',
+    ],
+};
+app.use(cors(corsOpts));
 const port = process.env.PORT || 8000;
 
 // Socket.io
@@ -60,6 +70,53 @@ io.on('connection', socket => {
                 });
             }
         });
+    
+        socket.on('createChatRoom', async (chatRoomData) => {
+            try {
+                console.log(chatRoomData)
+              const newChatRoom = new ChatRoom(chatRoomData);
+              newChatRoom.members.push(chatRoomData?.member)
+              const savedChatRoom = await newChatRoom.save();
+              socket.emit('chatRoomCreated', savedChatRoom);
+            } catch (error) {
+              console.error(error.message);
+            }
+          });
+
+          // Get all chat rooms
+  socket.on('getChatRooms', async (user_id) => {
+    try {
+      const chatRooms = await ChatRoom.find({});
+      socket.emit('chatRooms', chatRooms);
+    } catch (error) {
+      console.error(error.message);
+    }
+  });
+
+  socket.on('joinRoom', async (payload) => {
+    try {
+        const chatRooms = await ChatRoom.findOne({name:payload.roomName,members:payload.userId});
+        console.log(chatRooms)
+    
+    if(chatRooms==null){
+       const findRoom =  await ChatRoom.findOne({name:payload.roomName})
+       findRoom.members.push(payload.userId)
+        await findRoom.save()
+    }
+    socket.join(payload.roomName)
+    } catch (error) {
+      console.error(error.message);
+    }
+  });
+
+  socket.on('getAlljoinedRoomServer', async (userId) => {
+    try {
+        const chatRooms = await ChatRoom.find({members:userId});
+        socket.emit("getAlljoinedRoomClient",chatRooms)
+    } catch (error) {
+      console.error(error.message);
+    }
+  });
 
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);
