@@ -51,6 +51,7 @@ function App() {
     theme="light"
     transition="Bounce"
     />
+    <div className='flex'>
     {token && <Header/>}
     
     <Routes>
@@ -75,6 +76,7 @@ function App() {
       </ProtectedRoute>
       } />
     </Routes>
+    </div>
     </>
   );
 }

@@ -32,13 +32,6 @@ const CreateChatRoomModel = ({
   }
 
 
-
-
-
-
-
-
-
   return (<>
     {showModal ? (
       <>

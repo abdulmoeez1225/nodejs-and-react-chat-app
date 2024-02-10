@@ -21,7 +21,6 @@ const Dashboard = () => {
 	useEffect(() => {
 		socket?.emit('addUser', user?.id);
 		socket?.on('getUsers', users => {
-			// setUsers(users)
 			console.log('activeUsers :>> ', users);
 		})
 		socket?.on('getMessage', data => {
@@ -99,13 +98,12 @@ const Dashboard = () => {
 	}
 
 	return (
-		<div className='w-screen flex pl-40 '>
-			<div className='w-[25%] h-screen bg-secondary overflow-scroll'>
+		<div className='w-screen flex w-[85%] '>
+			<div className='w-[20%] h-screen bg-secondary overflow-scroll'>
 				<div className='flex items-center my-8 mx-14'>
 				
 					<div>
 					<Avatar name={user?.fullName} size='30' />
-					{/* <img src={tutorialsdev} width={75} height={75} className='border border-primary p-[2px] rounded-full' /> */}
 
 					</div>
 					<div className='ml-8'>
@@ -124,7 +122,6 @@ const Dashboard = () => {
 											<div className='cursor-pointer flex items-center' onClick={() => fetchMessages(conversationId, user)}>
 												<div>
 												<Avatar name={user?.fullName} size='30'/>
-												{/* <img src={Img1} className="w-[60px] h-[60px] rounded-full p-[2px] border border-primary" /> */}
 												</div>
 												<div className='ml-6'>
 													<h3 className='text-lg font-semibold'>{user?.fullName}</h3>
@@ -137,14 +134,13 @@ const Dashboard = () => {
 						}
 				</div>
 			</div>
-			<div className='w-[40%] h-screen bg-white flex flex-col items-center'>
+			<div className='w-[50%] h-screen bg-white flex flex-col items-center'>
 				{
 					messages?.receiver?.fullName &&
 					<div className='w-[75%] bg-secondary h-[80px] my-14 rounded-full flex items-center px-14 py-2'>
 						<div className='cursor-pointer'>
 						<Avatar name={messages?.receiver?.fullName} size='30'/>
 
-						{/* <img src={Img1} width={60} height={60} className="rounded-full" /> */}
 						
 						</div>
 						<div className='ml-6 mr-auto'>
@@ -179,6 +175,7 @@ const Dashboard = () => {
 				{
 					messages?.receiver?.fullName &&
 					<div className='p-14 w-full flex items-center'>
+					
 						<Input placeholder='Type a message...' value={message} onChange={(e) => setMessage(e.target.value)} className='w-[75%]' inputClassName='p-4 border-0 shadow-md rounded-full bg-light focus:ring-0 focus:border-0 outline-none' />
 						<div className={`ml-4 p-2 cursor-pointer bg-light rounded-full ${!message && 'pointer-events-none'}`} onClick={() => sendMessage()}>
 							<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-send" width="30" height="30" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2c3e50" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -198,7 +195,7 @@ const Dashboard = () => {
 					</div>
 				}
 			</div>
-			<div className='w-[25%] h-screen bg-light px-8 py-16 overflow-scroll'>
+			<div className='w-[30%] h-screen bg-light px-8 py-16 overflow-scroll'>
 				<div className='text-primary text-lg'>People</div>
 				<div>
 					{
@@ -208,7 +205,6 @@ const Dashboard = () => {
 									<div className='flex items-center py-8 border-b border-b-gray-300'>
 										<div className='cursor-pointer flex items-center' onClick={() => fetchMessages('new', user)}>
 											<div>
-											{/* <img src={Img1} className="w-[60px] h-[60px] rounded-full p-[2px] border border-primary" /> */}
 											<Avatar name={user?.fullName} size='30'/>
 
 											</div>

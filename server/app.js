@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const io = require('socket.io')(8080, {
     cors: {
-        origin: ['http://localhost:3000','http://localhost:8080',"https://main-tick-healthy.ngrok-free.app"],
+        origin: ['http://localhost:3000', 'http://localhost:8080', "https://main-tick-healthy.ngrok-free.app"],
     }
 });
 
@@ -16,23 +16,16 @@ const Users = require('./models/Users');
 const PrivateConversation = require('./models/PrivateConversation');
 const PrivateMessage = require('./models/PrivateMessage');
 const ChatRoom = require('./models/ChatRoom');
+const RoomMessage = require('./models/Message');
 
 // app Use
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-const corsOpts = {
-    origin: ['*','localhost:3000','http://192.168.100.170:3000','https://main-tick-healthy.ngrok-free.app'],
-    methods: [
-        'GET',
-        'POST',
-    ],
-    allowedHeaders: [
-        'Content-Type',
-    ],
-};
-app.use(cors(corsOpts));
+
+app.use(cors());
 const port = process.env.PORT || 8000;
+const ADMIN = "Admin"
 
 // Socket.io
 let users = [];
@@ -60,71 +53,160 @@ io.on('connection', socket => {
                 receiverId,
                 user: { id: user._id, fullName: user.fullName, email: user.email }
             });
-            }else {
-                io.to(sender.socketId).emit('getMessage', {
-                    senderId,
-                    message,
-                    conversationId,
-                    receiverId,
-                    user: { id: user._id, fullName: user.fullName, email: user.email }
-                });
+        } else {
+            io.to(sender.socketId).emit('getMessage', {
+                senderId,
+                message,
+                conversationId,
+                receiverId,
+                user: { id: user._id, fullName: user.fullName, email: user.email }
+            });
+        }
+    });
+
+    socket.on('sendMessageRoomServer', async ({
+        senderId,
+        chatRoomId,
+        message,
+        roomName }) => {
+        try {
+            const sender = users.find(user => user.userId === senderId);
+            const user = await Users.findById(senderId);
+            console.log('sender :>> ', sender);
+
+            const chatRoom = await ChatRoom.findById(chatRoomId);
+
+            if (!chatRoom) {
+                console.error('Chat room not found');
+                return;
             }
-        });
-    
-        socket.on('createChatRoom', async (chatRoomData) => {
-            try {
-                console.log(chatRoomData)
-              const newChatRoom = new ChatRoom(chatRoomData);
-              newChatRoom.members.push(chatRoomData?.member)
-              const savedChatRoom = await newChatRoom.save();
-              socket.emit('chatRoomCreated', savedChatRoom);
-            } catch (error) {
-              console.error(error.message);
+            console.log("here")
+
+            const newMessage = new RoomMessage({
+                chatRoomId,
+                senderId: senderId,
+                message
+            });
+            await newMessage.save();
+
+
+            io.to(roomName).emit("toRoomMessage", {
+                user: { id: user._id, fullName: user.fullName, email: user.email },
+                message,
+
+            });
+
+
+            console.log('Message added to chat room successfully');
+        } catch (error) {
+            console.error('Error adding message to chat room:', error.message);
+        }
+    });
+
+    socket.on('createChatRoom', async (chatRoomData) => {
+        try {
+            console.log(chatRoomData)
+            const newChatRoom = new ChatRoom(chatRoomData);
+            newChatRoom.members.push(chatRoomData?.member)
+            const savedChatRoom = await newChatRoom.save();
+            socket.emit('chatRoomCreated', savedChatRoom);
+        } catch (error) {
+            console.error(error.message);
+        }
+    });
+
+    // Get all chat rooms
+    socket.on('getChatRooms', async (user_id) => {
+        try {
+            const chatRooms = await ChatRoom.find({});
+            socket.emit('chatRooms', chatRooms);
+        } catch (error) {
+            console.error(error.message);
+        }
+    });
+
+    socket.on('getAllRoomConversationServer', async (roomName) => {
+        try {
+            const chatRooms = await ChatRoom.findOne({ name: roomName });
+            const roomConversation = await RoomMessage.find({ chatRoomId: chatRooms._id })
+                .populate('chatRoomId')
+                .populate('senderId')
+                .populate({
+                    path: 'chatRoomId',
+                    populate: {
+                        path: 'members'
+                    }
+                }).sort('-createdAt').limit(10)
+            roomConversation.reverse()
+            socket.emit('getAllRoomConversationClient', roomConversation);
+        } catch (error) {
+            console.error(error.message);
+        }
+
+    })
+
+    socket.on('joinRoom', async (payload) => {
+        try {
+            const chatRooms = await ChatRoom.findOne({ name: payload.roomName, members: payload.userId });
+
+            if (chatRooms == null) {
+                const findRoom = await ChatRoom.findOne({ name: payload.roomName })
+                findRoom.members.push(payload.userId)
+                await findRoom.save()
             }
-          });
+            const userIndex = users.map(user => user.userId).indexOf(payload.userId)
+            users[userIndex].room = payload.roomName
+            socket.join(payload.roomName)
+            // io.to(payload.roomName).emit('toRoomMessage', buildMsg(payload.userName, `has left the room`))
 
-          // Get all chat rooms
-  socket.on('getChatRooms', async (user_id) => {
-    try {
-      const chatRooms = await ChatRoom.find({});
-      socket.emit('chatRooms', chatRooms);
-    } catch (error) {
-      console.error(error.message);
-    }
-  });
+        } catch (error) {
+            console.error(error.message);
+        }
+    });
 
-  socket.on('joinRoom', async (payload) => {
-    try {
-        const chatRooms = await ChatRoom.findOne({name:payload.roomName,members:payload.userId});
-        console.log(chatRooms)
-    
-    if(chatRooms==null){
-       const findRoom =  await ChatRoom.findOne({name:payload.roomName})
-       findRoom.members.push(payload.userId)
-        await findRoom.save()
-    }
-    socket.join(payload.roomName)
-    } catch (error) {
-      console.error(error.message);
-    }
-  });
+    socket.on('getAlljoinedRoomServer', async (userId) => {
+        try {
+            const chatRooms = await ChatRoom.find({ members: userId });
+            socket.emit("getAlljoinedRoomClient", chatRooms)
+        } catch (error) {
+            console.error(error.message);
+        }
+    });
 
-  socket.on('getAlljoinedRoomServer', async (userId) => {
-    try {
-        const chatRooms = await ChatRoom.find({members:userId});
-        socket.emit("getAlljoinedRoomClient",chatRooms)
-    } catch (error) {
-      console.error(error.message);
-    }
-  });
+    socket.on('getAllRoomMembersServer', async (roomName) => {
+        try {
+            const AllRoomMembers = await ChatRoom.findOne({ name: roomName }).populate('members', '_id fullName email')
+            socket.emit('getAllRoomMembersClient', AllRoomMembers)
+        } catch (error) {
+            console.error(error.message);
+        }
+    })
+
+    socket.on('activity', (name) => {
+        const user = users.find(user => user.socketId == socket.id)
+        if (user) {
+            socket.broadcast.to(user.room).emit('activity', name)
+        }
+    })
 
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);
         users = users.filter(user => user.socketId !== socket.id);
         io.emit('getUsers', users);
     });
-    // io.emit('getUsers', socket.userId);
 });
+
+function buildMsg(name, text) {
+    return {
+        name,
+        text,
+        time: new Intl.DateTimeFormat('default', {
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric'
+        }).format(new Date())
+    }
+}
 
 // Routes
 app.get('/', (req, res) => {
@@ -148,7 +230,7 @@ app.post('/api/register', async (req, res, next) => {
                     newUser.save();
                     next();
                 })
-                return res.status(200).json({message:'User registered successfully'});
+                return res.status(200).json({ message: 'User registered successfully' });
             }
         }
 
@@ -183,7 +265,7 @@ app.post('/api/login', async (req, res, next) => {
                             $set: { token }
                         })
                         user.save();
-                        return res.status(200).json({message:"You Login Successfully", user: { id: user._id, email: user.email, fullName: user.fullName }, token: token })
+                        return res.status(200).json({ message: "You Login Successfully", user: { id: user._id, email: user.email, fullName: user.fullName }, token: token })
                     })
                 }
             }
@@ -284,3 +366,4 @@ app.get('/api/users/:userId', async (req, res) => {
 app.listen(port, () => {
     console.log('listening on port ' + port);
 })
+

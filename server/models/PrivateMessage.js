@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
 const privateMessageSchema = mongoose.Schema({
-    conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'PrivateConversation' },
-    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'PrivateConversation' },
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   recipientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    message: {
-        type: String
-    },
-    createdAt: { type: Date, default: Date.now },
+  message: {
+    type: String
+  },
+  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
